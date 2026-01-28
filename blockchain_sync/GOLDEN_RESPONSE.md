@@ -30,57 +30,45 @@ The contract tracks claimed status via `mapping(bytes32 => bool) public claimedL
 
 ### Performance Comparison Across Synchronization Strategies
 
-The chart below illustrates how throughput and latency characteristics differ across synchronization approaches as operational scale increases:
+The charts below illustrate how throughput, latency, and memory characteristics differ across synchronization approaches as operational scale increases:
 
+#### Chart 1: Throughput vs Operational Scale
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+xychart-beta
+    title "Throughput (blocks/second) vs Event Count"
+    x-axis "Event Count (thousands)" [0, 5, 10, 15, 20, 25, 30]
+    y-axis "Throughput (blocks/sec)" 0 --> 1000
+    line "Batch + Cache" [100, 300, 500, 650, 750, 850, 900]
+    line "Real-time Stream" [50, 150, 250, 350, 420, 470, 500]
+    line "On-chain Query" [20, 40, 55, 68, 78, 88, 100]
 ```
-Performance Metrics vs Operational Scale
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Throughput (blocks/second)
-     ┃
- 900 ┃                    ╱─────────────────  Batch + Cache (indexer)
-     ┃                 ╱╱╱
- 700 ┃              ╱╱╱
-     ┃           ╱╱╱
- 500 ┃        ╱╱╱              ╱──────────────  Real-time Stream
-     ┃     ╱╱╱               ╱╱
- 300 ┃  ╱╱╱                ╱╱
-     ┃╱╱                 ╱╱
- 100 ┃                 ╱╱            ╱─────────  On-chain Query
-     ┃              ╱╱            ╱╱╱
-   0 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     0      5K      10K     15K     20K     25K     30K    Events
+#### Chart 2: Latency vs Operational Scale
 
-Latency (milliseconds)
-     ┃
-5000 ┃                               ╱──────────  On-chain Query
-     ┃                            ╱╱╱
-4000 ┃                         ╱╱╱
-     ┃                      ╱╱╱
-3000 ┃                   ╱╱╱
-     ┃                ╱╱╱
-2000 ┃             ╱╱╱
-     ┃          ╱╱╱        ╱─────────────────────  Real-time Stream
-1000 ┃       ╱╱╱        ╱╱╱
-     ┃    ╱╱╱        ╱╱╱
-     ┃ ╱╱╱        ╱╱╱
-     ┃──────────────────────────────────────────  Batch + Cache
-   0 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     0      5K      10K     15K     20K     25K     30K    Events
+```mermaid
+%%{init: {'theme':'base'}}%%
+xychart-beta
+    title "Latency (milliseconds) vs Event Count"
+    x-axis "Event Count (thousands)" [0, 5, 10, 15, 20, 25, 30]
+    y-axis "Latency (ms)" 0 --> 5500
+    line "Batch + Cache" [100, 100, 100, 100, 100, 100, 100]
+    line "Real-time Stream" [200, 400, 650, 900, 1150, 1350, 1500]
+    line "On-chain Query" [500, 1200, 2000, 2900, 3700, 4400, 5000]
+```
 
-Memory Usage (MB)
-     ┃
- 800 ┃                          ╱──────────────────  Real-time Stream
-     ┃                       ╱╱╱
- 600 ┃                    ╱╱╱
-     ┃                 ╱╱╱
- 400 ┃              ╱╱╱     ╱────────────────────── Batch + Cache
-     ┃           ╱╱╱     ╱╱╱
- 200 ┃        ╱╱╱     ╱╱╱
-     ┃     ╱╱╱     ╱╱╱
-     ┃  ╱╱╱     ╱╱╱                ────────────────  On-chain Query
-   0 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     0      5K      10K     15K     20K     25K     30K    Events
+#### Chart 3: Memory Usage vs Operational Scale
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+xychart-beta
+    title "Memory Usage (MB) vs Event Count"
+    x-axis "Event Count (thousands)" [0, 5, 10, 15, 20, 25, 30]
+    y-axis "Memory (MB)" 0 --> 900
+    line "Batch + Cache" [50, 120, 180, 240, 300, 350, 400]
+    line "Real-time Stream" [80, 220, 370, 500, 630, 730, 800]
+    line "On-chain Query" [10, 10, 10, 10, 10, 10, 10]
 ```
 
 **Strategy Characteristics:**
