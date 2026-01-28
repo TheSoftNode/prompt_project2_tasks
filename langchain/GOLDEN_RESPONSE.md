@@ -39,8 +39,8 @@ Implementation considerations include the validation constraint that `chunk_over
 
 ### References
 
-1. LangChain Text Splitters - Base Implementation. *langchain_text_splitters/base.py*. Available at: https://github.com/langchain-ai/langchain/blob/master/libs/text-splitters/langchain_text_splitters/base.py
+1. LangChain Text Splitters - Base Implementation. *langchain_text_splitters/base.py*. Available at: https://github.com/langchain-ai/langchain/blob/11df1bedc3e496a129ab8e72cc79791378a875e0/libs/text-splitters/langchain_text_splitters/base.py
 
-2. LangChain Character-Based Text Splitters. *langchain_text_splitters/character.py*. Available at: https://github.com/langchain-ai/langchain/blob/master/libs/text-splitters/langchain_text_splitters/character.py
+2. LangChain Character-Based Text Splitters. *langchain_text_splitters/character.py*. Available at: https://github.com/langchain-ai/langchain/blob/11df1bedc3e496a129ab8e72cc79791378a875e0/libs/text-splitters/langchain_text_splitters/character.py
 
-3. LangChain Markdown Text Splitters. *langchain_text_splitters/markdown.py*. Available at: https://github.com/langchain-ai/langchain/blob/master/libs/text-splitters/langchain_text_splitters/markdown.py
+3. LangChain Markdown Text Splitters. *langchain_text_splitters/markdown.py*. Available at: https://github.com/langchain-ai/langchain/blob/11df1bedc3e496a129ab8e72cc79791378a875e0/libs/text-splitters/langchain_text_splitters/markdown.py
