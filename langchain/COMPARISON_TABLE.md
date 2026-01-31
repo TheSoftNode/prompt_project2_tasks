@@ -1,17 +1,17 @@
-# Text Chunking Algorithm Comparison
+# Text Splitter Comparison Table
 
-| Algorithm | Time Complexity | Context Preservation | Document Types Best Suited | Separator Handling |
-|-----------|----------------|---------------------|---------------------------|-------------------|
-| **CharacterTextSplitter** | O(n) | Fixed overlap (200 chars) | Formatted prose, academic papers, technical documentation | Single separator (`\n\n`) |
-| **RecursiveCharacterTextSplitter** | O(n) | Overlap + hierarchical boundaries | Code files, mixed-format documents, unstructured text | Hierarchical fallback (`\n\n` → `\n` → ` ` → `""`) |
-| **MarkdownHeaderTextSplitter** | O(n) + parsing | Structural metadata (header hierarchy) | Technical docs, APIs, structured knowledge bases | Header-based structure preservation |
+| Algorithm | Time Complexity | Context Preservation | Inherits From | Separators |
+|:----------|:---------------|:---------------------|:--------------|:-----------|
+| CharacterTextSplitter | O(n) | chunk_overlap (text duplication) | TextSplitter | 1 |
+| RecursiveCharacterTextSplitter | O(n) | chunk_overlap (text duplication) | TextSplitter | 4 |
+| MarkdownHeaderTextSplitter | O(n) | Document.metadata (structural injection) | BaseDocumentTransformer | Variable (header-based) |
 
 ---
 
-## Notes
+## Table Details
 
-- **n** represents document length in characters
-- All algorithms achieve linear time complexity for the splitting phase
-- Context preservation strategies range from simple character overlap to hierarchical structural metadata
-- Separator handling approaches vary from single-pattern matching to adaptive hierarchical fallback
-- Algorithm selection should prioritize document characteristics over complexity considerations
+- **Algorithm**: The class name of each text splitter implementation
+- **Time Complexity**: All three achieve O(n) linear time for documents of length n
+- **Context Preservation**: Two strategies - chunk_overlap (text duplication) vs Document.metadata (structural injection)
+- **Inherits From**: CharacterTextSplitter and RecursiveCharacterTextSplitter inherit from TextSplitter; MarkdownHeaderTextSplitter inherits from BaseDocumentTransformer
+- **Separators**: Number of default separators - CharacterTextSplitter (1), RecursiveCharacterTextSplitter (4), MarkdownHeaderTextSplitter (variable based on headers)

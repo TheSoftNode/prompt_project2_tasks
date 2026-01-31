@@ -1,0 +1,525 @@
+﻿Criterion Number,Description,Gemini 3.0 (Default),Gemini 3.0 Deep Research,GPT Deep Research,Weight,Numerical Weight,Accuracy / Quality / Image,Rationale,Sources,Criterion ID,Criterion Autoreview
+1,States the difference between Django middleware lists and Flask teardown stacks as 1,,,,Major,6,Accuracy (sub-task),"Source 1(Django):
+""self._view_middleware = []
+        self._template_response_middleware = []
+        self._exception_middleware = []""
+Source 2(Flask):
+""for name in chain(ctx.request.blueprints, (None,)):
+...
+for func in reversed(self.teardown_appcontext_funcs):""
+
+Django initializes three distinct middleware lists for request processing: _view_middleware, _template_response_middleware, and _exception_middleware, each set to an empty list (self._view_middleware = [], self._template_response_middleware = [], self._exception_middleware = []). Flask’s teardown logic, as shown, iterates two distinct teardown stacks: one loop over blueprint names plus None (for name in chain(ctx.request.blueprints, (None,)):) and one loop over application-context teardown functions (for func in reversed(self.teardown_appcontext_funcs):). Therefore, the difference between the number of Django middleware lists and Flask teardown stacks is 1 (3 minus 2).","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94704,"7/8
+
+Recommended Revisions:
+- Make the description deterministic by explicitly naming the counted items on both sides, for example: “States the difference as 1 between Django’s three middleware lists (_view_middleware, _template_response_middleware, _exception_middleware) and Flask’s two teardown stacks (teardown_request_funcs scoped by blueprint/None and teardown_appcontext_funcs).”"
+2,States the difference between Flask lifecycle signal sends and Django request_finished handler connections as 4,,,,Critical,9,Accuracy (sub-task),"Source 1(Flask):
+""request_started.send("", ""request_finished.send("", ""got_request_exception.send("", ""request_tearing_down.send("", ""appcontext_tearing_down.send(""
+
+Source 2(Django):
+ ""request_finished.connect(reset_urlconf)""
+
+Flask sends five distinct lifecycle signals, indicated by request_started.send(, request_finished.send(, got_request_exception.send(, request_tearing_down.send(, and appcontext_tearing_down.send(. Django makes a single handler connection to request_finished, shown by request_finished.connect(reset_urlconf). The difference between the number of Flask lifecycle signal sends and Django handler connections is 4, computed as 5 minus 1.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94706,"8/8
+Recommended Revisions:"
+3,States the combined total number of pre-view early-exit points across Flask and Django as 3,,,,Critical,9,Accuracy (sub-task),"Source 1(Flask): 
+""rv = self.preprocess_request(ctx)
+            if rv is None:
+                rv = self.dispatch_request(ctx)""
+""if rv is not None:
+                        return rv  # type: ignore[no-any-return]""
+""if (
+            getattr(rule, ""provide_automatic_options"", False)
+            and req.method == ""OPTIONS""
+        ):
+            return self.make_default_options_response(ctx)""
+
+Source 2(Django):
+ ""for middleware_method in self._view_middleware:
+            response = middleware_method(
+                request, callback, callback_args, callback_kwargs
+            )
+            if response:
+                break
+
+        if response is None:
+            wrapped_callback = self.make_view_atomic(callback)""
+
+Flask has two distinct pre-view early-exit points because preprocess_request can return a non-None response that is immediately returned instead of calling dispatch_request, and an automatic OPTIONS branch can return make_default_options_response before any view is invoked. Django has one distinct pre-view early-exit point because the _view_middleware loop can produce a non-null response that stops further processing and prevents make_view_atomic(callback) from wrapping and calling the view. Adding these yields a combined total of 3 early-exit points across both frameworks.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94707,"8/8
+Recommended Revisions:"
+4,States the Flask:Django ratio of distinct pre-view response-return short-circuits as 2:1,,,,Major,6,Accuracy (sub-task),"Source 1(Flask): 
+""rv = self.preprocess_request(ctx)
+            if rv is None:
+                rv = self.dispatch_request(ctx)""
+""rv = self.ensure_sync(before_func)()
+
+                    if rv is not None:
+                        return rv  # type: ignore[no-any-return]""
+""if req.routing_exception is not None:
+            self.raise_routing_exception(req)
+        rule: Rule = req.url_rule  # type: ignore[assignment]
+        # if we provide automatic options for this URL and the
+        # request came with the OPTIONS method, reply automatically
+        if (
+            getattr(rule, ""provide_automatic_options"", False)
+            and req.method == ""OPTIONS""
+        ):
+            return self.make_default_options_response(ctx)
+        # otherwise dispatch to the handler for that endpoint
+        view_args: dict[str, t.Any] = req.view_args  # type: ignore[assignment]
+        return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]""
+
+Source 2(Django): 
+""for middleware_method in self._view_middleware:
+            response = middleware_method(
+                request, callback, callback_args, callback_kwargs
+            )
+            if response:
+                break
+
+        if response is None:
+            wrapped_callback = self.make_view_atomic(callback)
+            # If it is an asynchronous view, run it in a subthread.
+            if iscoroutinefunction(wrapped_callback):
+                wrapped_callback = async_to_sync(wrapped_callback)
+            try:
+                response = wrapped_callback(request, *callback_args, **callback_kwargs)""
+
+The Flask to Django ratio is 2:1 because Flask has two distinct conditional branches that return a response before the view is invoked, while Django has one. In Flask, a before_request function can return a non-None value inside preprocess_request, which immediately returns that value and prevents dispatch_request from running, and Flask can also return a default OPTIONS response when provide_automatic_options is enabled and the request method is OPTIONS, which occurs before the endpoint function is called. In Django, a view middleware method in _view_middleware can produce a response that stops further processing before the callback is executed, and the callback runs only when response is None, so this constitutes a single distinct pre-view response-return short-circuit when sync and async logic are deduplicated.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94708,"8/8
+Recommended Revisions:"
+5,States the combined total number of distinct post-view response-processing loops across both frameworks as 3,,,,Major,6,Accuracy (sub-task),"Source 1(Flask):
+""for func in ctx._after_request_functions:
+            response = self.ensure_sync(func)(response)
+
+        for name in chain(ctx.request.blueprints, (None,)):
+            if name in self.after_request_funcs:
+                for func in reversed(self.after_request_funcs[name]):
+                    response = self.ensure_sync(func)(response)""
+
+Source 2(Django):
+""if hasattr(response, ""render"") and callable(response.render):
+            for middleware_method in self._template_response_middleware:
+                response = middleware_method(request, response)""
+
+Flask shows two distinct post-view response-processing loops because it iterates once over ctx._after_request_functions and applies each function to the already-created response, and it iterates again over each blueprint or app-level after_request function list (the for func in reversed(self.after_request_funcs[name]) loop) and applies each function to response. Django shows one distinct post-view response-processing loop because, when the response supports deferred rendering (hasattr(response, ""render"") and callable(response.render)), it iterates over _template_response_middleware and reassigns response from each middleware call. Adding these counts yields a combined total of 3 loops across both frameworks.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94709,"7/8
+
+Recommended Revisions:
+- Update the Description to state the correct combined total as 4, since Django includes both template_response_middleware and response middleware loops post-view.
+- Augment the Rationale and Sources to include Django’s standard response middleware loop (e.g., a quote showing the iteration over self._response_middleware) and revise the explanation to 2 (Flask) + 2 (Django) = 4."
+6,"States that the number of distinct adapter function types, ignoring local aliases, is 2",,,,Major,5,Accuracy (sub-task),"Source 1(Django): 
+""from asgiref.sync import async_to_sync, iscoroutinefunction, sync_to_async""
+
+Source 2(Flask):
+""from asgiref.sync import async_to_sync as asgiref_async_to_sync""
+
+Two distinct underlying adapter functions appear because the imports across both frameworks reference only async_to_sync and sync_to_async from asgiref.sync when local aliases are ignored. Django imports both adapters directly in from asgiref.sync import async_to_sync, iscoroutinefunction, sync_to_async, which shows that both bridging functions are present as concrete adapter types used for sync to async and async to sync execution. Flask imports async_to_sync under a local alias using from asgiref.sync import async_to_sync as asgiref_async_to_sync, but this does not add a third adapter because the underlying function remains async_to_sync and only the local name changes. Therefore, deduplicating by underlying function identity yields exactly two adapter functions: async_to_sync and sync_to_async.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94711,"8/8
+Recommended Revisions:"
+7,"States that Django has one more distinct async-to-sync wrapping site than Flask, for a difference of 1",,,,Critical,8,Accuracy (sub-task),"Source 1(Flask): 
+""def ensure_sync(self, func: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
+        """"""Ensure that the function is synchronous for WSGI workers.
+        Plain ``def`` functions are returned as-is. ``async def``
+        functions are wrapped to run and wait for the response.
+
+        Override this method to change how the app runs async views.
+
+        .. versionadded:: 2.0
+        """"""
+        if iscoroutinefunction(func):
+            return self.async_to_sync(func)
+
+        return func""
+
+Source 2(Django): 
+""elif method_is_async:
+            if debug:
+                logger.debug(""Asynchronous handler adapted for %s."", name)
+            return async_to_sync(method)""
+""if iscoroutinefunction(wrapped_callback):
+                wrapped_callback = async_to_sync(wrapped_callback)""
+
+Django applies async-to-sync wrapping in two distinct places because it directly calls async_to_sync(...) when adapting an asynchronous handler method (return async_to_sync(method)) and it also wraps an asynchronous view callback when the callback is detected as a coroutine (wrapped_callback = async_to_sync(wrapped_callback)). Flask applies async-to-sync wrapping in one distinct place because ensure_sync detects a coroutine function and returns a wrapped callable via self.async_to_sync(func). Therefore, Django has one more distinct async-to-sync wrapping site than Flask, for a difference of 1 (2 minus 1).","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94712,"8/8
+Recommended Revisions:"
+8,States that the union of invalid response outcome categories across Flask and Django is 3,,,,Critical,8,Accuracy (sub-task),"Source 1(Flask):
+"" if isinstance(rv, tuple):
+            len_rv = len(rv)
+
+            # a 3-tuple is unpacked directly
+            if len_rv == 3:
+                rv, status, headers = rv  # type: ignore[misc]
+            # decide if a 2-tuple has status or headers
+            elif len_rv == 2:
+                if isinstance(rv[1], (Headers, dict, tuple, list)):
+                    rv, headers = rv  # pyright: ignore
+                else:
+                    rv, status = rv  # type: ignore[assignment,misc]
+            # other sized tuples are not allowed
+            else:
+                raise TypeError(
+                    ""The view function did not return a valid response tuple.""
+                    "" The tuple must have the form (body, status, headers),""
+                    "" (body, status), or (body, headers).""
+                )
+
+        # the body must not be None
+        if rv is None:
+            raise TypeError(
+                f""The view function for {request.endpoint!r} did not""
+                "" return a valid response. The function either returned""
+                "" None or ended without a return statement.""
+            )""
+
+Source 2(Django):
+""def check_response(self, response, callback, name=None):
+        """"""
+        Raise an error if the view returned None or an uncalled coroutine.
+        """"""
+        if not (response is None or asyncio.iscoroutine(response)):
+            return
+        if not name:
+            if isinstance(callback, types.FunctionType):  # FBV
+                name = ""The view %s.%s"" % (callback.__module__, callback.__name__)
+            else:  # CBV
+                name = ""The view %s.%s.__call__"" % (
+                    callback.__module__,
+                    callback.__class__.__name__,
+                )
+        if response is None:
+            raise ValueError(
+                ""%s didn't return an HttpResponse object. It returned None ""
+                ""instead."" % name
+            )
+        elif asyncio.iscoroutine(response):
+            raise ValueError(
+                ""%s didn't return an HttpResponse object. It returned an ""
+                ""unawaited coroutine instead. You may need to add an 'await' ""
+                ""into your view."" % name
+            )""
+
+Flask rejects two invalid response outcome categories: an invalid response tuple shape, where tuple lengths other than 2 or 3 raise a TypeError stating the tuple is not allowed, and a missing response, where rv is None raises a TypeError indicating the view returned None or ended without returning. Django rejects two invalid response outcome categories: a missing response, where response is None raises a ValueError stating the view returned None instead of an HttpResponse, and an unawaited coroutine, where asyncio.iscoroutine(response) raises a ValueError stating the view returned an unawaited coroutine. Taking the union across both frameworks yields three unique categories because the “None response” category overlaps between Flask and Django, while “invalid tuple” appears only in Flask and “unawaited coroutine” appears only in Django.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94713,"8/8
+
+Recommended Revisions:"
+9,States that the number of unique lifecycle signal identifiers across both frameworks is 5,,,,Major,5,Accuracy (sub-task),"Source 1(Flask):
+""from .signals import appcontext_tearing_down
+from .signals import got_request_exception
+from .signals import request_finished
+from .signals import request_started
+from .signals import request_tearing_down""
+
+Source 2(Django):
+""from django.core.signals import request_finished""
+
+Flask references five distinct request lifecycle signal identifiers by importing appcontext_tearing_down, got_request_exception, request_finished, request_started, and request_tearing_down. Django references request_finished, which overlaps with Flask’s request_finished rather than adding a new identifier. Taking the union across both frameworks therefore yields 5 unique lifecycle signal identifiers.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94714,"8/8
+
+Recommended Revisions:"
+10,States that the total number of explicit iscoroutinefunction(...) checks across both frameworks is 6,,,,Major,5,Accuracy (sub-task),"Source 1 (Flask):
+""def ensure_sync(self, func: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
+    """"""Ensure that the function is synchronous for WSGI workers.
+    Plain ``def`` functions are returned as-is. ``async def``
+    functions are wrapped to run and wait for the response.
+    ...
+    """"""
+    if iscoroutinefunction(func):
+        return self.async_to_sync(func)
+
+    return func"" 
+
+Source 2 (Django):
+""if method_is_async is None:
+            method_is_async = iscoroutinefunction(method)""
+""if iscoroutinefunction(wrapped_callback):
+                wrapped_callback = async_to_sync(wrapped_callback)""
+""if not iscoroutinefunction(wrapped_callback):
+    wrapped_callback = sync_to_async(
+        wrapped_callback, thread_sensitive=True
+    )""
+""if iscoroutinefunction(response.render):
+    response = await response.render()""
+""if iscoroutinefunction(view):
+                    raise RuntimeError(
+                        ""You cannot use ATOMIC_REQUESTS with async views.""
+                    )""
+
+There are 6 explicit iscoroutinefunction(...) checks in total when combining the shown Flask and Django code. Flask contributes 1 check because ensure_sync branches on iscoroutinefunction(func) to decide whether to wrap the callable for synchronous execution. Django contributes 5 checks because it calls iscoroutinefunction(...) in five distinct control-flow gates: it infers whether a handler method is async (method_is_async = iscoroutinefunction(method)), it wraps an async callback (if iscoroutinefunction(wrapped_callback):), it adapts a non-async callback into an async wrapper (if not iscoroutinefunction(wrapped_callback):), it decides whether response.render must be awaited (if iscoroutinefunction(response.render):), and it rejects async views under ATOMIC_REQUESTS (if iscoroutinefunction(view):). Summing these counts gives 1 + 5 = 6.","https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py, https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py",94715,"8/8
+Recommended Revisions:"
+11,"Identifies environ[""werkzeug.debug.preserve_context""](ctx) as an end-of-request cleanup action",,,,Major,4,Accuracy (sub-task),"Source: 
+""finally:
+            if ""werkzeug.debug.preserve_context"" in environ:
+                environ[""werkzeug.debug.preserve_context""](ctx)
+
+            if (
+                error is not None
+                and self.should_ignore_error is not None
+                and self.should_ignore_error(error)
+            ):
+                error = None
+
+            ctx.pop(error)""
+
+environ[""werkzeug.debug.preserve_context""](ctx) is an end-of-request cleanup action because it is executed inside the finally: block of the request handling path, which runs during teardown regardless of whether the request completed normally or raised an exception. The code first guards the behavior with if ""werkzeug.debug.preserve_context"" in environ: and then invokes the callable stored in the WSGI environment using the active request context object as the argument, environ[""werkzeug.debug.preserve_context""](ctx). ",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94725,"7/8
+
+Recommended Revisions:
+- Revise the description to avoid misclassifying the action as “cleanup.” For example: “Identifies environ['werkzeug.debug.preserve_context'](ctx) as a hook invoked in the finally block during request teardown to preserve the request context for debugging.”
+- Update the rationale to support the revised claim by citing a source that explains the purpose of preserve_context (that it preserves the context for the debugger) and clarifying that actual cleanup occurs with ctx.pop(error) after this call."
+12,Identifies ctx.pop(error) as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source: 
+""def wsgi_app(
+    self, environ: WSGIEnvironment, start_response: StartResponse
+) -> cabc.Iterable[bytes]:
+    ...
+    ctx = self.request_context(environ)
+    error: BaseException | None = None
+    try:
+        try:
+            ctx.push()
+            response = self.full_dispatch_request(ctx)
+        except Exception as e:
+            error = e
+            response = self.handle_exception(ctx, e)
+        except:
+            error = sys.exc_info()[1]
+            raise
+        return response(environ, start_response)
+    finally:
+        if ""werkzeug.debug.preserve_context"" in environ:
+            environ[""werkzeug.debug.preserve_context""](ctx)
+
+        if (
+            error is not None
+            and self.should_ignore_error is not None
+            and self.should_ignore_error(error)
+        ):
+            error = None
+
+        ctx.pop(error)""
+
+The call to ctx.pop(error) is an end-of-request cleanup action because it appears in the finally: block of wsgi_app, which runs after the request is dispatched and the response callable has been returned, regardless of whether an exception occurred. In this flow, ctx is created with ctx = self.request_context(environ) and activated with ctx.push(), then request handling occurs via response = self.full_dispatch_request(ctx) or an exception path sets error and produces response = self.handle_exception(ctx, e). After return response(environ, start_response), the finally: block executes and ends by calling ctx.pop(error). Passing error into ctx.pop ties the teardown to the recorded exception state, and placing it at the end of the finally: block shows it is the definitive step that removes the request context after all other teardown decisions in that block have been applied.",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94726,"7/8
+
+Recommended Revisions:
+- Fix grammar in the rationale: change “After return response(environ, start_response), the finally: block executes...” to “After returning response(environ, start_response), the finally: block executes...”."
+13,Identifies ctx._after_request_functions as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source:
+""def process_response(self, ctx: AppContext, response: Response) -> Response:
+    ...
+    for func in ctx._after_request_functions:
+        response = self.ensure_sync(func)(response)
+    ...
+    return response""
+
+ctx._after_request_functions is an end-of-request cleanup action because it is the collection of functions that Flask runs during response finalization to apply post-view work before the response is returned to the server. In process_response, the response object already exists when the loop begins, and Flask iterates for func in ctx._after_request_functions: while invoking each function on the current response via response = self.ensure_sync(func)(response).",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94785,"8/8
+
+Recommended Revisions:"
+14,Identifies after_request as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source: 
+""def finalize_request(
+    self,
+    ctx: AppContext,
+    rv: ft.ResponseReturnValue | HTTPException,
+    from_error_handler: bool = False,
+) -> Response:
+    ...
+    response = self.make_response(rv)
+    try:
+        response = self.process_response(ctx, response)
+        request_finished.send(
+            self, _async_wrapper=self.ensure_sync, response=response
+        )
+    ...
+    return response""
+""def process_response(self, ctx: AppContext, response: Response) -> Response:
+    """"""Can be overridden in order to modify the response object
+    before it's sent to the WSGI server.  By default this will
+    call all the :meth:`after_request` decorated functions.
+    ...
+    """"""
+    for func in ctx._after_request_functions:
+        response = self.ensure_sync(func)(response)
+
+    for name in chain(ctx.request.blueprints, (None,)):
+        if name in self.after_request_funcs:
+            for func in reversed(self.after_request_funcs[name]):
+                response = self.ensure_sync(func)(response)
+
+    if not self.session_interface.is_null_session(ctx.session):
+        self.session_interface.save_session(self, ctx.session, response)
+
+    return response""
+
+after_request is an end-of-request cleanup action because the finalize_request path creates a response and then performs response finalization that explicitly runs the functions registered via the after_request mechanism before the response is returned. In finalize_request, the response is created with response = self.make_response(rv) and then postprocessing is applied with response = self.process_response(ctx, response). In process_response, the docstring states that the default behavior is to call the after_request decorated functions, and the implementation enforces that by iterating over registered handlers and applying each one to the existing response, including the blueprint and app-wide registrations via for name in chain(ctx.request.blueprints, (None,)): and for func in reversed(self.after_request_funcs[name]): with response = self.ensure_sync(func)(response). This shows after_request handlers run at the end of the request, after the view has produced a result, and can perform cleanup or final mutations of the response before it is sent.",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94786,"6/8
+
+Recommended Revisions:
+- Rewrite the description to a single, precise check without subjective language, for example: ""States that Flask after_request handlers run after the view returns and before the response is sent.""
+- Remove the ambiguous ""cleanup action"" phrasing to avoid stacking multiple requirements (timing and purpose) into one check."
+15,"Identifies session_interface.save_session(self, ctx.session, response) as an end-of-request cleanup action",,,,Major,4,Accuracy (sub-task),"Source:
+""def finalize_request(
+    self,
+    ctx: AppContext,
+    rv: ft.ResponseReturnValue | HTTPException,
+    from_error_handler: bool = False,
+) -> Response:
+    ...
+    response = self.make_response(rv)
+    try:
+        response = self.process_response(ctx, response)
+        request_finished.send(
+            self, _async_wrapper=self.ensure_sync, response=response
+        )
+    ...
+    return response""
+
+""def process_response(self, ctx: AppContext, response: Response) -> Response:
+    ...
+    for func in ctx._after_request_functions:
+        response = self.ensure_sync(func)(response)
+
+    for name in chain(ctx.request.blueprints, (None,)):
+        if name in self.after_request_funcs:
+            for func in reversed(self.after_request_funcs[name]):
+                response = self.ensure_sync(func)(response)
+
+    if not self.session_interface.is_null_session(ctx.session):
+        self.session_interface.save_session(self, ctx.session, response)
+
+    return response""
+
+session_interface.save_session(self, ctx.session, response) is an end-of-request cleanup action because it is executed during response finalization after the response object has already been created and after post-view response hooks have been applied. In finalize_request, Flask creates the response with response = self.make_response(rv) and then finalizes it by calling response = self.process_response(ctx, response) before returning the response. In process_response, Flask first runs response transformation loops over ctx._after_request_functions and self.after_request_funcs, and then checks if not self.session_interface.is_null_session(ctx.session): before calling self.session_interface.save_session(self, ctx.session, response). Placing the save call after the after-request handlers and guarding it on the session type shows it is part of the end-of-request finalization sequence that persists session state into the outgoing response immediately before the response is returned.",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94787,"8/8
+
+Recommended Revisions:"
+16,Identifies request_finished.send(...) as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source
+""from .signals import request_finished""
+""def finalize_request(
+    self,
+    ctx: AppContext,
+    rv: ft.ResponseReturnValue | HTTPException,
+    from_error_handler: bool = False,
+) -> Response:
+    response = self.make_response(rv)
+    try:
+        response = self.process_response(ctx, response)
+        request_finished.send(
+            self, _async_wrapper=self.ensure_sync, response=response
+        )
+    ...
+    return response""
+
+request_finished.send(...) is an end-of-request cleanup action because it is invoked during response finalization after a concrete response has been created and processed, and it signals that request handling has completed. In finalize_request, Flask first creates the response with response = self.make_response(rv) and then applies postprocessing with response = self.process_response(ctx, response). Only after those end-of-request steps does it emit the lifecycle signal via request_finished.send(self, _async_wrapper=self.ensure_sync, response=response), passing the finalized response and using _async_wrapper=self.ensure_sync to safely invoke receivers in a synchronous context. The explicit import from .signals import request_finished and the placement of request_finished.send(...) immediately after response processing show it is a distinct end-of-request action that runs at the tail of the request lifecycle.",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94788,"8/8
+
+Recommended Revisions:"
+17,Identifies teardown_request as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source:
+""def do_teardown_request(
+        self, ctx: AppContext, exc: BaseException | None = None
+    ) -> None:
+        """"""Called after the request is dispatched and the response is finalized,
+        right before the request context is popped. Called by
+        :meth:`.AppContext.pop`.
+
+        This calls all functions decorated with :meth:`teardown_request`, and
+        :meth:`Blueprint.teardown_request` if a blueprint handled the request.
+        Finally, the :data:`request_tearing_down` signal is sent.
+    ...
+    """"""
+        for name in chain(ctx.request.blueprints, (None,)):
+            if name in self.teardown_request_funcs:
+                for func in reversed(self.teardown_request_funcs[name]):
+                    self.ensure_sync(func)(exc)""
+
+teardown_request is an end-of-request cleanup action because do_teardown_request is explicitly defined as running after the request is dispatched and the response is finalized, and it executes immediately before the request context is removed. The docstring states it is “Called after the request is dispatched and the response is finalized, right before the request context is popped,” and it further specifies that it “calls all functions decorated with :meth:`teardown_request`, and :meth:`Blueprint.teardown_request` if a blueprint handled the request.” The implementation enforces this by iterating for name in chain(ctx.request.blueprints, (None,)): to cover each blueprint and the app-wide registration, then looping for func in reversed(self.teardown_request_funcs[name]): and invoking each registered teardown handler with self.ensure_sync(func)(exc). ",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94789,"8/8
+
+Recommended Revisions:"
+18,Identifies request_tearing_down.send(...) as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source:
+""def do_teardown_request(
+        self, ctx: AppContext, exc: BaseException | None = None
+    ) -> None:
+        """"""Called after the request is dispatched and the response is finalized,
+        right before the request context is popped. Called by
+        :meth:`.AppContext.pop`.
+
+        This calls all functions decorated with :meth:`teardown_request`, and
+        :meth:`Blueprint.teardown_request` if a blueprint handled the request.
+         Finally, the :data:`request_tearing_down` signal is sent.
+    ...
+    """"""
+        for name in chain(ctx.request.blueprints, (None,)):
+            if name in self.teardown_request_funcs:
+                for func in reversed(self.teardown_request_funcs[name]):
+                    self.ensure_sync(func)(exc)
+
+        request_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc)""
+
+request_tearing_down.send(...) is an end-of-request cleanup action because it is executed in do_teardown_request, which is defined as running after the request is dispatched and the response is finalized, right before the request context is popped. The method first runs the teardown callbacks by iterating over blueprint and app-level registrations and invoking each teardown handler with the exception value exc, and then it emits the request_tearing_down signal as the final step via request_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc).",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94790,"8/8
+
+Recommended Revisions:"
+19,Identifies teardown_appcontext as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source:
+""def do_teardown_appcontext(
+        self, ctx: AppContext, exc: BaseException | None = None
+    ) -> None:
+        """"""Called right before the application context is popped. Called by
+        :meth:`.AppContext.pop`.
+
+        This calls all functions decorated with :meth:`teardown_appcontext`.
+        Then the :data:`appcontext_tearing_down` signal is sent.
+    ...
+    """"""
+        for func in reversed(self.teardown_appcontext_funcs):
+            self.ensure_sync(func)(exc)
+
+        appcontext_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc)""
+
+teardown_appcontext is an end-of-request cleanup action because do_teardown_appcontext is defined as running right before the application context is popped, and it executes the callbacks registered via the teardown_appcontext decorator during that teardown phase. The docstring states it is “Called right before the application context is popped” and that it “calls all functions decorated with :meth:`teardown_appcontext`,” which is implemented by iterating for func in reversed(self.teardown_appcontext_funcs): and invoking each registered teardown function with self.ensure_sync(func)(exc)",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94791,"7/8
+Recommended Revisions:
+- Revise the description to reference application-context teardown rather than “end-of-request” to align precisely with the cited source, e.g., “Identifies teardown_appcontext as an application-context teardown cleanup executed right before the application context is popped.”
+- If you want to keep the “end-of-request” framing, add a supporting quote from Flask docs explicitly tying application context teardown to the end of a request."
+20,Identifies appcontext_tearing_down.send(...) as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source:
+""def do_teardown_appcontext(
+    self, ctx: AppContext, exc: BaseException | None = None
+) -> None:
+    """"""Called right before the application context is popped. Called by
+    :meth:`.AppContext.pop`.
+
+    This calls all functions decorated with :meth:`teardown_appcontext`.
+    Then the :data:`appcontext_tearing_down` signal is sent.
+    ...
+    """"""
+for func in reversed(self.teardown_appcontext_funcs):
+    self.ensure_sync(func)(exc)
+
+appcontext_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc)""
+
+appcontext_tearing_down.send(...) is an end-of-request cleanup action because it is executed in do_teardown_appcontext, which is defined as running right before the application context is popped. The method first performs application-context teardown by iterating for func in reversed(self.teardown_appcontext_funcs): and invoking each registered teardown_appcontext callback with self.ensure_sync(func)(exc), and then it sends the teardown-phase signal via appcontext_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc).",https://github.com/pallets/flask/blob/798e006f435887adceb6aab9b57cde8e20276793/src/flask/app.py,94792,"8/8
+
+Recommended Revisions:"
+21,Identifies response._resource_closers.append(request.close) as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source: 
+""response._resource_closers.append(request.close)""
+
+response._resource_closers.append(request.close) is an end-of-request cleanup action because it registers the request’s close method to be executed later when the response is being finalized and its resources are being cleaned up. By appending request.close to the response’s _resource_closers list, the framework ensures that request-scoped resources tied to the active request will be closed even after the view has already succeeded and produced a response, because the closer is deferred until the response cleanup phase runs.",https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py,94727,"8/8
+Recommended Revisions:"
+22,Identifies set_urlconf(None) as an end-of-request cleanup action,,,,Major,4,Accuracy (sub-task),"Source: 
+""def reset_urlconf(sender, **kwargs):
+    """"""Reset the URLconf after each request is finished.""""""
+    set_urlconf(None)
+
+
+request_finished.connect(reset_urlconf)""
+
+set_urlconf(None) is an end-of-request cleanup action because it is executed by a handler that is explicitly connected to the request_finished signal, which runs when a request has completed. The function reset_urlconf is defined with the purpose “Reset the URLconf after each request is finished,” and its entire body performs the cleanup step set_urlconf(None) to clear the per-request URL configuration state.",https://github.com/django/django/blob/5d5f95da40afbaede9f483de891c14f5da0e8218/django/core/handlers/base.py,94728,"7/7
+Recommended Revisions:"
+23,Outputs the values in a table,,,,Major,4,Image,"Source: ""Output the values in a table""
+
+The prompt explicitly requests: “Output the values in a table.”",Prompt,94735,"8/8
+Recommended Revisions:"
+24,Formats the table with 2 columns,,,,Major,4,Image,"Source: ""Label the headings of the columns as “Framework” and “Cleanup action”.""
+
+The prompt specifies two fields to be represented as columns and names them explicitly: “Framework” and “Cleanup action,” which requires exactly 2 columns.",Prompt,94736,"8/8
+Recommended Revisions:"
+25,Formats the table with 12 rows,,,,Major,4,Image,"Source: ""List all distinct end-of-request cleanup actions shown across both frameworks.""
+
+Based on the identified distinct cleanup actions, there are 12 rows required, one per cleanup action: environ[""werkzeug.debug.preserve_context""](ctx), ctx.pop(error), ctx._after_request_functions, after_request, session_interface.save_session(self, ctx.session, response), request_finished.send(...), teardown_request, request_tearing_down.send(...), teardown_appcontext, appcontext_tearing_down.send(...), response._resource_closers.append(request.close), set_urlconf(None)",Prompt,94737,"8/8
+Recommended Revisions:"
+26,Includes a column in the table named “Framework”,,,,Major,4,Image,"Source: ""Label the headings of the columns as “Framework” and “Cleanup action”.""
+
+The prompt explicitly requests the column heading “Framework,” so the table must include that exact header label.",Prompt,94738,"8/8
+Recommended Revisions:"
+27,Includes a column in the table named “Cleanup action”,,,,Major,4,Image,"Source: ""Label the headings of the columns as “Framework” and “Cleanup action”.""
+
+The prompt explicitly requests the column heading “Cleanup action,” so the table must include that exact header label.",Prompt,94739,"8/8
+
+Recommended Revisions:
+- None"
+28,Displays each cleanup action as a separate row in the table,,,,Major,4,Image,"Source: ""the cleanup actions in rows""
+
+The prompt specifies “the cleanup actions in rows,” requiring each cleanup action to be presented as its own row rather than embedded in prose or grouped together.",Prompt,94741,"8/8
+Recommended Revisions:"
