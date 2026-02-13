@@ -64,6 +64,8 @@ AlphaFold's architecture represents a significant evolution from the original Tr
 
 The table below compares the architectural parameters of the AlphaFold Evoformer [1][4] with the original Transformer (big) model from the seminal "Attention is all you need" paper. It consists of 3 columns and 4 rows. The columns show: the architectural parameter name, the corresponding value for the AlphaFold Evoformer, and the corresponding value for the Transformer (big) model. The rows compare the number of blocks/layers, the model dimension (d_model), the feedforward dimension (d_ff), and the number of attention heads.
 
+Architecture Comparison: AlphaFold vs Transformer
+
 | Parameter                    | AlphaFold Evoformer | Transformer (big) |
 | ---------------------------- | ------------------- | ----------------- |
 | Number of blocks/layers      | 48                  | 6                 |
