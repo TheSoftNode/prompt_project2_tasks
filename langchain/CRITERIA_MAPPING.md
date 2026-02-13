@@ -1,122 +1,153 @@
 # CRITERIA TO PROMPT QUESTION MAPPING
 
-This document maps each criterion (1-33) to the exact prompt question it answers or handles.
+This document maps each criterion (1-45) to the exact prompt question it answers or handles.
 
 ---
 
-## Question 1: Separator Analysis
-**Prompt Question:** Analyze how RecursiveCharacterTextSplitter's _split_text method handles separator iteration compared to CharacterTextSplitter's split_text method. Examine the default separator configuration in each implementation and identify whether they use single or multiple separators. Determine the difference between the maximum number of separators evaluated during a split operation in the hierarchical implementation versus the simple implementation.
+## Question 1: Language Separator Anomalies
+**Prompt Question:** RecursiveCharacterTextSplitter's `get_separators_for_language` method defines separator lists for 26 language implementations. Among these, identify the THREE languages where separator lists contain either: (a) duplicate separator strings appearing multiple times, OR (b) the standard "\n\n" separator is completely absent. For each anomalous language, state: the language name, the type of anomaly (duplicate vs missing), and the exact separator count.
 
 **Criteria:**
-- **C1:** How many default separators does RecursiveCharacterTextSplitter evaluate?
-- **C2:** How many default separators does CharacterTextSplitter evaluate?
-- **C3:** What is the difference between the number of separators in RecursiveCharacterTextSplitter and CharacterTextSplitter?
+- **C1:** First anomalous language name
+- **C2:** First anomalous language anomaly type (duplicate/missing)
+- **C3:** First anomalous language separator count
+- **C4:** Second anomalous language name
+- **C5:** Second anomalous language anomaly type (duplicate/missing)
+- **C6:** Second anomalous language separator count
+- **C7:** Third anomalous language name
+- **C8:** Third anomalous language anomaly type (duplicate/missing)
+- **C9:** Third anomalous language separator count
 
 ---
 
-## Question 2: Parameter Ratio
-**Prompt Question:** Examine TextSplitter's __init__ method to identify the default parameter values for chunk_size and chunk_overlap. Analyze how these values control memory consumption when overlap creates content duplication across adjacent chunks. Calculate the ratio between the default chunk_size and default chunk_overlap to quantify the designed duplication factor.
+## Question 2: _merge_splits Loop Analysis
+**Prompt Question:** The `TextSplitter._merge_splits` method in base.py implements chunk merging using nested loop structures. Given inputs: `splits = ["a"*100, "b"*50, "c"*150, "d"*75]`, `separator = "--"` (length 2), `chunk_size = 200`, `chunk_overlap = 50`, calculate: (a) the exact number of outer for-loop iterations, (b) the exact total number of while-loop iterations across all for-loop iterations, (c) the number of elements in the final returned `docs` list.
 
 **Criteria:**
-- **C4:** What is the default chunk_size value in TextSplitter?
-- **C5:** What is the default chunk_overlap value in TextSplitter?
-- **C6:** What is the ratio of default chunk_size to default chunk_overlap?
+- **C10:** Outer for-loop iteration count
+- **C11:** Total while-loop iteration count
+- **C12:** Final docs list element count
 
 ---
 
-## Question 3: Inheritance Count
-**Prompt Question:** Survey the text-splitters library across character.py, markdown.py, python.py, latex.py, jsx.py, and html.py to identify all specialized splitter implementations. For each specialized class, determine which base class it inherits from. Categorize the inheritance patterns to reveal which base strategy the library architecture favors for extensibility. Count how many specialized splitter classes inherit from RecursiveCharacterTextSplitter.
+## Question 3: JSFrameworkTextSplitter Separator Count
+**Prompt Question:** JSFrameworkTextSplitter's `split_text` method implements dynamic separator generation by extracting component tags from input text at runtime using the regex pattern `r"<\s*([a-zA-Z0-9]+)[^>]*>"`. The method concatenates four separator lists: dynamically extracted tags, 24 hardcoded JS separators, and additional fixed separators. For an input containing exactly 7 unique opening tags, calculate the total number of separators in the final concatenated list used for splitting.
 
 **Criteria:**
-- **C7:** How many specialized splitter classes inherit from RecursiveCharacterTextSplitter?
+- **C13:** Total separator count for input with 7 unique tags
 
 ---
 
-## Question 4: Architectural Obligations
-**Prompt Question:** Examine TextSplitter's class definition to identify its parent classes and determine why multiple inheritance is used. Scan for @abstractmethod decorators to identify which methods subclasses must implement. Sum the architectural obligations by combining the count of parent classes TextSplitter inherits from plus the count of abstract methods it enforces.
+## Question 4: Inheritance Depth Sum
+**Prompt Question:** Inheritance depth analysis across the module reveals varying hierarchy complexity. Trace the complete inheritance chains for: (a) PythonCodeTextSplitter, (b) HTMLSemanticPreservingSplitter, (c) RecursiveJsonSplitter. For each, count the total levels from the class to the ultimate base (including BaseDocumentTransformer/ABC if present). Express the result as the sum of all three depth counts.
 
 **Criteria:**
-- **C8:** How many parent classes does TextSplitter inherit from?
-- **C9:** How many abstract methods does TextSplitter define?
-- **C10:** What is the sum of parent classes and abstract methods for TextSplitter?
+- **C14:** Sum of inheritance depths for PythonCodeTextSplitter + HTMLSemanticPreservingSplitter + RecursiveJsonSplitter
 
 ---
 
-## Question 5: Context Preservation Ratio
-**Prompt Question:** Analyze the context preservation mechanisms across CharacterTextSplitter, RecursiveCharacterTextSplitter, and MarkdownHeaderTextSplitter. Identify whether each implementation uses chunk_overlap for text duplication or Document.metadata for structural information injection. Categorize these as overlap-based or metadata-based strategies. Express the distribution as a ratio comparing separator-based splitters to metadata-based splitters.
+## Question 5: Recursion Depth Sum
+**Prompt Question:** RecursiveCharacterTextSplitter's `_split_text` method and RecursiveJsonSplitter's `_json_split` method both implement recursive algorithms with different complexity characteristics. For the worst-case scenario: (a) a text with separator list length L=15 where each separator successfully splits into exactly 3 parts at each level - what is the maximum recursion depth for `_split_text`? (b) For a JSON object nested D=8 levels deep where each level contains exactly 1 key-value pair - what is the exact recursion depth for `_json_split`? Express as the sum of both depths.
 
 **Criteria:**
-- **C11:** How many of the three main splitters use separator-based overlap for context preservation?
-- **C12:** How many of the three main splitters use metadata-based context preservation?
-- **C13:** What is the ratio of separator-based splitters to metadata-based splitters?
+- **C15:** Sum of max recursion depths for _split_text (L=15) + _json_split (D=8)
 
 ---
 
-## Question 6: Parameter Comparison
-**Prompt Question:** Compare the parameter configurations between CharacterTextSplitter and RecursiveCharacterTextSplitter. Examine the default values for chunk_size, chunk_overlap, keep_separator, strip_whitespace, and add_start_index in both implementations. Identify which parameters have matching defaults and which differ. Count the parameters with mismatched default values.
+## Question 6: Parameter Override Count
+**Prompt Question:** Multiple splitter classes override default parameter values from the TextSplitter base class. Compare the base class defaults (chunk_size=4000, chunk_overlap=200, keep_separator=False) against: RecursiveCharacterTextSplitter, JSFrameworkTextSplitter, SentenceTransformersTokenTextSplitter, and HTMLSemanticPreservingSplitter. Count the total number of parameter override instances across all four classes where a subclass specifies a different default value than the base class.
 
 **Criteria:**
-- **C14:** Does chunk_size have different default values between CharacterTextSplitter and RecursiveCharacterTextSplitter?
-- **C15:** Does chunk_overlap have different default values between CharacterTextSplitter and RecursiveCharacterTextSplitter?
-- **C16:** Does keep_separator have different default values between CharacterTextSplitter and RecursiveCharacterTextSplitter?
-- **C17:** Does strip_whitespace have different default values between CharacterTextSplitter and RecursiveCharacterTextSplitter?
-- **C18:** Does add_start_index have different default values between CharacterTextSplitter and RecursiveCharacterTextSplitter?
-- **C19:** How many parameters have different default values between CharacterTextSplitter and RecursiveCharacterTextSplitter?
+- **C16:** Total parameter override instances across 4 specified classes
 
 ---
 
-## Question 7: List Variables
-**Prompt Question:** Examine RecursiveCharacterTextSplitter's _split_text method implementation to identify all list variables created for accumulating results during chunk processing. Trace through the method to distinguish between intermediate accumulation structures and final output storage. Count the distinct list variables used for chunk accumulation before returning results.
+## Question 7: Data Structure Mutation Counts
+**Prompt Question:** HTMLHeaderTextSplitter's `_generate_documents` method implements stack-based DOM traversal instead of recursion. The algorithm uses specific data structure mutation operations: `clear()`, `pop()`, `extend()`, and `del` (dictionary deletion). Count the exact number of each mutation type that appears in the method's source code. Express as: (clear_count, pop_count, extend_count, del_count).
 
 **Criteria:**
-- **C20:** How many distinct list variables does RecursiveCharacterTextSplitter's _split_text method use for chunk accumulation?
+- **C17:** clear() count
+- **C18:** pop() count
+- **C19:** extend() count
+- **C20:** del count
 
 ---
 
-## Question 8: Time Complexity
-**Prompt Question:** Analyze the loop structures and iteration patterns in CharacterTextSplitter.split_text, RecursiveCharacterTextSplitter._split_text, and MarkdownHeaderTextSplitter.split_text. For each implementation, determine whether every character is processed a constant or variable number of times. Identify which implementations achieve O(n) time complexity for documents of length n. Count the implementations that maintain linear time bounds.
+## Question 8: State Variable Lifecycle Product
+**Prompt Question:** MarkdownHeaderTextSplitter's `split_text` method maintains seven state variables throughout execution: `lines_with_metadata`, `current_content`, `current_metadata`, `header_stack`, `initial_metadata`, `in_code_block`, and `opening_fence`. Analyze their lifecycle: (a) how many are initialized before the main loop, (b) how many are modified inside the loop, (c) how many are accessed after the loop completes. Express as the product: (before) × (inside) × (after).
 
 **Criteria:**
-- **C21:** Does CharacterTextSplitter achieve O(n) time complexity?
-- **C22:** Does RecursiveCharacterTextSplitter achieve O(n) time complexity?
-- **C23:** Does MarkdownHeaderTextSplitter achieve O(n) time complexity?
-- **C24:** How many of the three main splitters achieve O(n) time complexity?
+- **C21:** Product of (before) × (inside) × (after)
 
 ---
 
-## Question 9: Adapter Functions
-**Prompt Question:** Examine the import statements across the text-splitters library to identify async/sync adapter functions from asgiref.sync. Analyze how these adapters are used in ensure_sync methods to bridge execution contexts. Distinguish between adapter types based on their wrapping direction. Count the distinct adapter function types imported by the library.
+## Question 9: Separator Character Ratio
+**Prompt Question:** The separator character count reveals implementation complexity differences. Calculate the total number of characters (including spaces, excluding the empty string separator "") across all separator strings for: (a) Language.HTML's separator list, (b) Language.PYTHON's separator list. Express the result as the ratio HTML:PYTHON in simplest integer form.
 
 **Criteria:**
-- **C25:** How many distinct adapter function types are imported from asgiref.sync?
+- **C22:** HTML:PYTHON character count ratio in simplest form
 
 ---
 
-## Question 10: Comparison Table
-**Prompt Question:** Create a comparison table showing five architectural dimensions for each of the three main splitters: algorithm name, time complexity for documents of length n, context preservation mechanism, base class inherited from, and number of default separators. Label columns as: "Algorithm", "Time Complexity", "Context Preservation", "Inherits From", "Separators".
+## Question 10: Complexity Comparison Table
+**Prompt Question:** Create a complexity comparison table with 5 columns and 4 rows. Compare RecursiveCharacterTextSplitter, RecursiveJsonSplitter, HTMLHeaderTextSplitter, and MarkdownHeaderTextSplitter. Columns: "Algorithm", "Recursion Type", "Max Depth Formula", "Primary Data Structure", "Worst-Case Complexity". For "Recursion Type" use: Direct Recursion, Indirect Recursion, Stack-Based Iteration, or None. For "Max Depth Formula" express in terms of relevant variables (e.g., "L" for separator count, "D" for JSON depth, "H" for DOM height). For "Worst-Case Complexity" use Big-O notation with clearly defined variables.
 
+### Table Structure Criteria
 **Criteria:**
-- **C26:** Outputs the comparison in a table format?
-- **C27:** Formats the table with 5 columns?
-- **C28:** Formats the table with 3 rows (excluding header)?
-- **C29:** Does the comparison table include "Algorithm" as a column header?
-- **C30:** Does the comparison table include "Time Complexity" as a column header?
-- **C31:** Does the comparison table include "Context Preservation" as a column header?
-- **C32:** Does the comparison table include "Inherits From" as a column header?
-- **C33:** Does the comparison table include "Separators" as a column header?
-- **C34:** Does the comparison table include CharacterTextSplitter as a row?
-- **C35:** Does the comparison table include RecursiveCharacterTextSplitter as a row?
-- **C36:** Does the comparison table include MarkdownHeaderTextSplitter as a row?
+- **C23:** Outputs comparison in table format
+- **C24:** Table has exactly 5 columns
+- **C25:** Table has exactly 4 data rows (excluding header)
+
+### Column Header Criteria
+**Criteria:**
+- **C26:** Column header "Algorithm"
+- **C27:** Column header "Recursion Type"
+- **C28:** Column header "Max Depth Formula"
+- **C29:** Column header "Primary Data Structure"
+- **C30:** Column header "Worst-Case Complexity"
+
+### Row Entry Criteria
+**Criteria:**
+- **C31:** Row for RecursiveCharacterTextSplitter
+- **C32:** Row for RecursiveJsonSplitter
+- **C33:** Row for HTMLHeaderTextSplitter
+- **C34:** Row for MarkdownHeaderTextSplitter
+
+### Cell Value Criteria (Selected Complex Cells)
+**Criteria:**
+- **C35:** RecursiveCharacterTextSplitter - Recursion Type value
+- **C36:** RecursiveCharacterTextSplitter - Max Depth Formula value
+- **C37:** RecursiveCharacterTextSplitter - Worst-Case Complexity value
+- **C38:** RecursiveJsonSplitter - Recursion Type value
+- **C39:** RecursiveJsonSplitter - Max Depth Formula value
+- **C40:** RecursiveJsonSplitter - Worst-Case Complexity value
+- **C41:** HTMLHeaderTextSplitter - Recursion Type value
+- **C42:** HTMLHeaderTextSplitter - Max Depth Formula value
+- **C43:** HTMLHeaderTextSplitter - Worst-Case Complexity value
+- **C44:** MarkdownHeaderTextSplitter - Recursion Type value
+- **C45:** MarkdownHeaderTextSplitter - Max Depth Formula value
+
+**Note:** We evaluate 11 of the 20 total cell values (focusing on algorithmically complex cells: Recursion Type, Max Depth Formula, Worst-Case Complexity) to stay within 45 criteria limit. Algorithm names and Primary Data Structure cells are too straightforward to warrant separate criteria evaluation.
 
 ---
 
 ## Summary
 
-**Total Criteria:** 36
-- **Analytical Criteria (Q1-Q9):** 25 criteria
-- **Table Criteria (Q10):** 11 criteria
-  - Table structure: 3 criteria (C26-C28)
-  - Column headers: 5 criteria (C29-C33)
-  - Row entries: 3 criteria (C34-C36)
+**Total Criteria:** 45
+- **Analytical Criteria (Q1-Q9):** 22 criteria
+  - Q1: 9 criteria (C1-C9)
+  - Q2: 3 criteria (C10-C12)
+  - Q3: 1 criterion (C13)
+  - Q4: 1 criterion (C14)
+  - Q5: 1 criterion (C15)
+  - Q6: 1 criterion (C16)
+  - Q7: 4 criteria (C17-C20)
+  - Q8: 1 criterion (C21)
+  - Q9: 1 criterion (C22)
+- **Table Criteria (Q10):** 23 criteria
+  - Table structure: 3 criteria (C23-C25)
+  - Column headers: 5 criteria (C26-C30)
+  - Row entries: 4 criteria (C31-C34)
+  - Cell values: 11 criteria (C35-C45)
 
-Each criterion corresponds to a specific component answer required by the prompt questions.
+Each criterion corresponds to a specific component answer required by the prompt questions. All questions focus on algorithmic analysis with exact, verifiable answers.
